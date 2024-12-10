@@ -44,15 +44,6 @@ import java.util.concurrent.ExecutionException;
 public class SearchController {
 
     @Resource
-    private PictureService pictureService;
-
-    @Resource
-    private UserService userService;
-
-    @Resource
-    private PostService postService;
-
-    @Resource
     private SearchFacade searchFacade;
 
     /**

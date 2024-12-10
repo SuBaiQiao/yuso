@@ -1,6 +1,7 @@
 package com.yupi.springbootinit.model.vo;
 
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yupi.springbootinit.model.entity.Picture;
 import com.yupi.springbootinit.model.entity.Post;
 import lombok.Data;
@@ -24,4 +25,6 @@ public class SearchVO implements Serializable {
     private List<Picture> pictureList;
 
     private List<PostVO> postList;
+
+    private List<?> dataList;
 }

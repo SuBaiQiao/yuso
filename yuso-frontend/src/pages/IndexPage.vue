@@ -54,9 +54,13 @@ const loadData = (query: any) => {
     searchText: query.text,
   };
   MyAxios.post("/search/all", postQuery).then((response) => {
-    pictureList.value = response.pictureList || [];
-    userList.value = response.userList || [];
-    postList.value = response.postList || [];
+    if (postQuery.type == "post") {
+      postList.value = response.dataList || [];
+    } else if (postQuery.type == "user") {
+      userList.value = response.dataList || [];
+    } else if (postQuery.type == "picture") {
+      pictureList.value = response.dataList || [];
+    }
   });
 };
 

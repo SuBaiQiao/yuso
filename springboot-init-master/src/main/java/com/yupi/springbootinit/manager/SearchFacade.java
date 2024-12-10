@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yupi.springbootinit.common.BaseResponse;
 import com.yupi.springbootinit.common.ErrorCode;
 import com.yupi.springbootinit.common.ResultUtils;
+import com.yupi.springbootinit.datasource.*;
 import com.yupi.springbootinit.exception.BusinessException;
 import com.yupi.springbootinit.model.dto.post.PostQueryRequest;
 import com.yupi.springbootinit.model.dto.search.SearchRequest;
@@ -21,19 +22,24 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Component
 public class SearchFacade {
 
     @Resource
-    private PictureService pictureService;
+    private PictureDataSource pictureDataSource;
 
     @Resource
-    private UserService userService;
+    private UserDataSource userDataSource;
 
     @Resource
-    private PostService postService;
+    private PostDataSource postDataSource;
+
+    @Resource
+    private DataSourceRegistry dataSourceRegistry;
 
     public SearchVO searchAll(SearchRequest searchRequest,
                                             HttpServletRequest request) {
@@ -46,19 +52,10 @@ public class SearchFacade {
         SearchVO searchVO = new SearchVO();
 
         if (null == searchTypeEnum) {
-            UserQueryRequest userQueryRequest = new UserQueryRequest();
-            userQueryRequest.setUserName(searchText);
-
-            PostQueryRequest postQueryRequest = new PostQueryRequest();
-            postQueryRequest.setSearchText(searchText);
-
-            CompletableFuture<Page<Picture>> pictureCompletableFuture = CompletableFuture.supplyAsync(() -> pictureService.searchPicture(searchText, current, pageSize));
-            CompletableFuture<Page<UserVO>> userCompletableFuture = CompletableFuture.supplyAsync(() -> userService.listUserVOByPage(userQueryRequest, current, pageSize));
-            CompletableFuture<Page<PostVO>> postCompletableFuture = CompletableFuture.supplyAsync(() -> postService.listPostVOByPage(postQueryRequest, current, pageSize, request));
-
+            CompletableFuture<Page<Picture>> pictureCompletableFuture = CompletableFuture.supplyAsync(() -> pictureDataSource.doSearch(searchText, current, pageSize));
+            CompletableFuture<Page<UserVO>> userCompletableFuture = CompletableFuture.supplyAsync(() -> userDataSource.doSearch(searchText, current, pageSize));
+            CompletableFuture<Page<PostVO>> postCompletableFuture = CompletableFuture.supplyAsync(() -> postDataSource.doSearch(searchText, current, pageSize));
             CompletableFuture.allOf(pictureCompletableFuture, userCompletableFuture, postCompletableFuture).join();
-
-
             try {
                 searchVO.setPictureList(pictureCompletableFuture.get().getRecords());
                 searchVO.setPostList(postCompletableFuture.get().getRecords());
@@ -67,23 +64,8 @@ public class SearchFacade {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "数据查询失败");
             }
         } else {
-            switch (searchTypeEnum) {
-                case POST:
-                    PostQueryRequest postQueryRequest = new PostQueryRequest();
-                    postQueryRequest.setSearchText(searchText);
-                    searchVO.setPostList(postService.listPostVOByPage(postQueryRequest, current, pageSize, request).getRecords());
-                    break;
-                case USER:
-                    UserQueryRequest userQueryRequest = new UserQueryRequest();
-                    userQueryRequest.setUserName(searchText);
-                    searchVO.setUserList(userService.listUserVOByPage(userQueryRequest, current, pageSize).getRecords());
-                    break;
-                case PICTURE:
-                    searchVO.setPictureList(pictureService.searchPicture(searchText, current, pageSize).getRecords());
-                    break;
-                default:
-                    throw new BusinessException(ErrorCode.PARAMS_ERROR);
-            }
+            Page<?> page = dataSourceRegistry.getDataSourceByType(searchTypeEnum.getValue()).doSearch(searchText, current, pageSize);
+            searchVO.setDataList(page.getRecords());
         }
         return searchVO;
     }
